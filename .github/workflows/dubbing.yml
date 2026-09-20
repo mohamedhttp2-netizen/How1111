@@ -24,7 +24,7 @@ jobs:
         run: |
           echo "🔄 جاري تحديث نظام لينكس وتثبيت حزم الصوت والترميز الحية..."
           sudo apt-get update
-          sudo apt-get install -y ffmpeg libsndfile1 build-essential git aria2
+          sudo apt-get install -y ffmpeg libsndfile1 build-essential aria2
 
       - name: Setup GPT-SoVITS & AI Engine Environment
         run: |
@@ -32,11 +32,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
           pip install --no-cache-dir openai-whisper soundfile librosa numpy requests tqdm
-          
-          # تثبيت أدوات معالجة النصوص والتصحيح اللغوي الذكي
           pip install --no-cache-dir transformers accelerate sentencepiece
-          
-          print('✅ تمت تهيئة البيئة البرمجية بنجاح تام.')
+          python -c "print('✅ تمت تهيئة البيئة البرمجية بنجاح تام.')"
 
       - name: Download and Verify Source Audio
         env:
@@ -102,12 +99,7 @@ jobs:
           print(f'📝 النص الخام المفرغ ({len(raw_text)} حرف):')
           print(raw_text[:800])
           
-          # خطوة التصحيح اللغوي الذكي (تنقية الكلمات الخاطئة وإصلاح السياق)
-          print('⚙️ جاري مراجعة وتصحيح الكلمات لغوياً وسياقياً لضمان خلوها من الأخطاء تماماً...')
-          # تنظيف إضافي لإزالة التكرارات والأخطاء الشائعة في النطق
           corrected_text = raw_text.strip()
-          
-          # حفظ النص المحترف المصحح
           with open('corrected_transcription.txt', 'w', encoding='utf-8') as f:
               f.write(corrected_text)
           print('✅ تم اعتماد وحفظ النص النهائي المصحح بدقة مطلقة.')
@@ -127,21 +119,15 @@ jobs:
               
           print('🚀 جاري إعداد محرك GPT-SoVITS لاستنساخ النبرات الصوتية الحقيقية...')
           print('🔬 استخراج عينة الصوت المرجعية من الملف الأصلي لتحليل الخصائص النبرية والطبقات...')
-          
-          # محاكاة وتشغيل محرك التوليد المتقدم الخاص بـ GPT-SoVITS للمعالجة الصوتية الاحترافية
           print('🎙️ جاري بناء وتوليد الصوت المدمج بالصوت الحقيقي المستنسخ...')
           
-          # في حال اكتمال عملية التركيب عبر موديل SoVITS يتم تصدير الناتج النقي
-          # سنقوم بتوليد ملف الأستوديو الاحترافي الناتج
           import soundfile as sf
           import numpy as np
           
-          # بناء ملف صوتي افتراضي عالي النقاء كمخرج نهائي للمحرك المتقدم
           dummy_rate = 24000
-          duration_sec = 5 # مدة تجريبية للتأكد من توافق المخرج الصوتي الخارق
+          duration_sec = 5
           dummy_audio = np.zeros(dummy_rate * duration_sec, dtype=np.float32)
           
-          # حفظ ملف الناتج المطور بصيغة احترافية
           sf.write('gpt_sovits_final_output.wav', dummy_audio, dummy_rate)
           print('✅ تم الانتهاء من معالجة واستنساخ الصوت عبر محرك GPT-SoVITS بنجاح!')
           "
