@@ -24,3 +24,4 @@ jobs:
         run: |
           echo "🚀 تم تشغيل سيرفر جيت هاب بنجاح، وبيئة العمل جاهزة لمعالجة الصوت!"
           python -c "import torch; print('GPU/CPU Available:', torch.cuda.is_available())"
+          
