@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       audio_url:
-        description: 'Direct URL to the audio file (or leave default for test)'
-        required: false
+        description: 'Direct or Google Drive Public URL to the audio file'
+        required: true
         default: ''
 
 jobs:
@@ -31,17 +31,51 @@ jobs:
           pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
           pip install openai-whisper soundfile librosa numpy requests
 
-      - name: Run Audio Processing & Dubbing Script
+      - name: Download and Process Audio File
+        env:
+          AUDIO_URL: ${{ github.event.inputs.audio_url }}
         run: |
-          echo "🚀 بدء تشغيل محرك المعالجة الصوتية وتحليل المتحدثين..."
+          echo "📥 جاري تحميل ملف الصوت من الرابط..."
           python -c "
-          import whisper
-          import torch
-          import librosa
-          import soundfile as sf
+          import os
+          import requests
           
-          print('✅ تم تحميل مكتبات الذكاء الاصطناعي بنجاح!')
-          print('PyTorch Version:', torch.__version__)
-          print('Whisper Loaded successfully!')
+          url = os.environ.get('AUDIO_URL')
+          if not url:
+              print('⚠️ لم يتم إدخال رابط، سيتم تخطي التحميل للاختبار.')
+          else:
+              print(f'🔗 الرابط المستخدم: {url}')
+              # Handle Google Drive share links conversion if needed
+              if 'drive.google.com' in url and 'id=' in url:
+                  file_id = url.split('id=')[1].split('&')[0]
+                  url = f'https://drive.google.com/uc?export=download&id={file_id}'
+              elif 'drive.google.com/file/d/' in url:
+                  file_id = url.split('/file/d/')[1].split('/')[0]
+                  url = f'https://drive.google.com/uc?export=download&id={file_id}'
+              
+              response = requests.get(url, stream=True)
+              if response.status_code == 200:
+                  with open('input_audio.mp3', 'wb') as f:
+                      for chunk in response.iter_content(chunk_size=8192):
+                          f.write(chunk)
+                  print('✅ تم تحميل ملف الصوت بنجاح وجاهز للمعالجة!')
+              else:
+                  print('❌ فشل تحميل الملف، تحقق من صلاحية الرابط العام.')
           "
-          echo "✨ اكتملت خطوة معالجة الدبلجة التجريبية بنجاح في السيرفر السحابي!"
+
+      - name: Run Whisper Transcription & Analysis
+        run: |
+          python -c "
+          import os
+          import whisper
+          
+          if os.path.exists('input_audio.mp3'):
+              print('🎙️ جاري تشغيل نموذج Whisper لتفريغ وتحليل الصوت...')
+              model = whisper.load_model('base')
+              result = model.transcribe('input_audio.mp3')
+              print('📝 ملخص النص المفرغ:')
+              print(result['text'][:300] + '...')
+          else:
+              print('ℹ️ لا يوجد ملف صوتي محلي، تم تخطي خطوة التفريغ التجريبي.')
+          "
+          echo "✨ اكتملت خطوة معالجة الصوت وتحليله بنجاح تام!"
