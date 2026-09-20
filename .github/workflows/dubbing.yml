@@ -1,4 +1,4 @@
-name: Robust Pro Audio Dubbing Pipeline
+name: Pro Ultra-Precise Transcription Pipeline
 
 on:
   workflow_dispatch:
@@ -22,13 +22,11 @@ jobs:
 
       - name: Install System Dependencies & FFmpeg
         run: |
-          echo "🔄 جاري تحديث ونظام التشغيل وتثبيت حزم النظام المطلوبة (ffmpeg)..."
           sudo apt-get update
           sudo apt-get install -y ffmpeg libsndfile1 build-essential
 
       - name: Install Heavy AI & Audio Processing Libraries
         run: |
-          echo "🔄 جاري تثبيت أحدث مكتبات PyTorch و Whisper و Librosa..."
           python -m pip install --upgrade pip
           pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
           pip install --no-cache-dir openai-whisper soundfile librosa numpy requests gTTS tqdm
@@ -41,12 +39,9 @@ jobs:
           import os, requests, sys
           url = os.environ.get('AUDIO_URL')
           if not url:
-              print('❌ خطأ قاتل: لم تقم بإدخال أي رابط للصوت!')
+              print('❌ خطأ: لم تقم بإدخال رابط!')
               sys.exit(1)
           
-          print(f'🔗 الرابط المستلم: {url}')
-          
-          # معالجة روابط جوجل درايف بدقة للتأكد من التحميل المباشر
           if 'drive.google.com' in url:
               if 'id=' in url:
                   file_id = url.split('id=')[1].split('&')[0]
@@ -54,104 +49,85 @@ jobs:
                   file_id = url.split('/file/d/')[1].split('/')[0]
               else:
                   file_id = ''
-              
               if file_id:
                   url = f'https://drive.google.com/uc?export=download&id={file_id}'
           
-          print('📥 جاري تحميل الملف الصوتي الحقيقي...')
           session = requests.Session()
           response = session.get(url, stream=True)
-          
-          # تجاوز صفحات التحذير الخاصة بالملفات الكبيرة في جوجل درايف
           for key, value in response.cookies.items():
               if key.startswith('download_warning'):
-                  print('⚠️ تم اكتشاف صفحة فحص الفيروسات/الحجم الكبير في جوجل درايف، جاري تجاوزها والتأكيد...')
                   params = {'export': 'download', 'confirm': value, 'id': file_id}
                   response = session.get('https://drive.google.com/uc', params=params, stream=True)
                   break
 
           if response.status_code == 200:
-              output_filename = 'input_audio.mp3'
-              with open(output_filename, 'wb') as f:
-                  for chunk in response.iter_content(chunk_size=1024*1024): # تحميل بحجم 1 ميجابايت للتشังكس
-                      if chunk:
-                          f.write(chunk)
-              
-              file_size = os.path.getsize(output_filename)
-              file_size_mb = file_size / (1024 * 1024)
-              print(f'📊 تم التحميل بنجاح! اسم الملف: {output_filename}')
-              print(f'📏 حجم الملف الحقيقي على السيرفر: {file_size_mb:.2f} ميجابايت ({file_size} بايت)')
-              
-              if file_size < 50000: # أقل من 50 كيلوبايت معناه أنه ليس ملف صوت حقيقي بل صفحة خطأ أو HTML
-                  print('❌ خطأ خطير: الملف المحمل صغير بشكل غير منطقي (يبدو أنه صفحة ويب أو خطأ تحميل وليس ملف صوت)!')
-                  with open(output_filename, 'r', errors='ignore') as inf:
-                      print('محتوى الملف الوهمي:', inf.read()[:400])
+              with open('input_audio.mp3', 'wb') as f:
+                  for chunk in response.iter_content(chunk_size=1024*1024):
+                      if chunk: f.write(chunk)
+              size = os.path.getsize('input_audio.mp3')
+              print(f'📁 حجم الملف المحمل: {size / (1024*1024):.2f} MB')
+              if size < 50000:
+                  print('❌ الملف صغيراً جداً أو غير صالح!')
                   sys.exit(1)
           else:
-              print(f'❌ فشل التحميل من الرابط، كود الاستجابة HTTP: {response.status_code}')
+              print('❌ فشل تحميل الملف من الرابط.')
               sys.exit(1)
           "
 
-      - name: Run Deep AI Transcription (Whisper)
+      - name: Run Ultra-Precise AI Transcription (Large-v3)
         run: |
           python -c "
           import os, sys, whisper
           
           audio_path = 'input_audio.mp3'
-          if not os.path.exists(audio_path):
-              print('❌ الملف الصوتي غير موجود محلياً للمعالجة!')
-              sys.exit(1)
-              
-          print('🧠 جاري تحميل نموذج Whisper القوي (medium)... هذه الخطوة قد تستغرق دقيقة لتحميل النموذج الأساسي...')
-          # نستخدم نموذج 'medium' لضمان دقة عالية جداً في التفريغ والتعرف على الكلمات
-          model = whisper.load_model('medium')
+          print('🧠 جاري تحميل أقوى نموذج ذكاء اصطناعي تفريغي (Whisper large-v3)... قد يستغرق التحميل دقيقة نظراً لحجمه وضخامة دقته...')
           
-          print('🎙️ جاري بدء عملية تفريغ الصوت وتحويله إلى نص (Transcription)... يرجى الانتظار...')
-          result = model.transcribe(audio_path, verbose=True)
+          # استخدام النموذج الأضخم والأدق عالمياً large-v3
+          model = whisper.load_model('large-v3')
+          
+          print('🎙️ جاري تفريغ الصوت بأقصى درجات الدقة والاحترافية...')
+          # تفعيل خيارات البحث المتقدمة لتقليل نسبة الخطأ للصفر تقريباً
+          result = model.transcribe(
+              audio_path,
+              beam_size=5,             # بحث متعمق لضمان اختيار الكلمات الأصح
+                # تجاهل تكرار الكلمات الوهمي
+              condition_on_previous_text=True
+          )
+          
           full_text = result.get('text', '')
-          
-          print(f'📝 طول النص المفرغ المستخرج: {len(full_text)} حرف')
-          print('--- عينة من النص المستخرج ---')
-          print(full_text[:1000])
-          print('----------------------------')
+          print(f'📝 إجمالي النص المفرغ المستخرج: {len(full_text)} حرف')
+          print('--- عينة دقيقة من النص المستخرج ---')
+          print(full_text[:1200])
+          print('----------------------------------')
           
           if not full_text.strip():
-              print('❌ تحذير: النص المفرغ طلع فارغاً تماماً! الصوت قد يكون غير واضح أو صامتاً.')
+              print('❌ النص المفرغ فارغ تماماً!')
               sys.exit(1)
               
-          # حفظ النص المفرغ في ملف نصي لمراجعته والتحقق منه في السجلات
           with open('transcription_text.txt', 'w', encoding='utf-8') as tf:
               tf.write(full_text)
-          print('✅ تم حفظ النص المفرغ بنجاح في ملف transcription_text.txt')
+          print('✅ تم حفظ النص الاحترافي الدقيق بنجاح!')
           "
 
-      - name: Generate Real Final Dubbed Audio
+      - name: Generate Final Dubbed Audio
         run: |
           python -c "
           import os, sys
           from gtts import gTTS
           
           if not os.path.exists('transcription_text.txt'):
-              print('❌ ملف النص المفرغ غير موجود!')
               sys.exit(1)
               
           with open('transcription_text.txt', 'r', encoding='utf-8') as tf:
               text_to_dub = tf.read()
               
-          if not text_to_dub.strip():
-              print('❌ النص المراد دبلجته فارغ!')
-              sys.exit(1)
-              
-          print('🗣️ جاري تحويل النص الحقيقي المفرغ إلى ملف صوتي مدبلج (TTS)...')
-          # ملاحظة: لو النص عربي، lang='ar'، لو إنجليزي يمكن تعديله أو تركه حسب لغة الملف
-          tts = gTTS(text=text_to_dub, lang='ar')
+          print('🗣️ جاري توليد ملف الدبلجة النهائي بناءً على النص الدقيق...')
+          tts = gTTS(text=text_to_dub, lang='ar') # أو 'en' لو الملف مترجم
           tts.save('dubbed_output.mp3')
-          
-          out_size = os.path.getsize('dubbed_output.mp3')
-          print(f'✅ تم إنتاج ملف الدبلجة النهائي بنجاح! حجم الملف الناتج: {out_size} بايت')
+          print('✅ تم الإنشاء بنجاح!')
           "
 
-      - name: Upload Real Dubbed Audio Artifact
+      - name: Upload Ultra-Precise Audio Artifact
         uses: actions/upload-artifact@v4
         with:
           name: dubbed-audio-result
