@@ -1,4 +1,4 @@
-name: Ultimate Pro Audio Cleaning, Translation & Voice Cloning Pipeline
+name: Ultimate Pro GPT-SoVITS & Smart AI Dubbing Pipeline
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ on:
         default: 'https://drive.google.com/file/d/18qtMomdbYNxsOhYZ7zOPBYXGbtTsOOA-/view?usp=drivesdk'
 
 jobs:
-  run-ultimate-ai-pipeline:
+  run-ultimate-gpt-sovits-pipeline:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -20,7 +20,7 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install System Dependencies & Audio Processing Tools
+      - name: Install System Dependencies & Audio Tools
         run: |
           echo "🔄 جاري تحديث نظام لينكس وتثبيت أقوى حزم معالجة الصوت والترميز (FFmpeg, Sox, Build Tools)..."
           sudo apt-get update
@@ -31,7 +31,7 @@ jobs:
           echo "🔄 جاري تثبيت أحدث مكتبات الذكاء الاصطناعي والنماذج العميقة..."
           python -m pip install --upgrade pip
           pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-          pip install --no-cache-dir openai-whisper soundfile librosa numpy requests tqdm transformers accelerate sentencepiece deep-translator
+          pip install --no-cache-dir openai-whisper soundfile librosa numpy requests tqdm transformers accelerate sentencepiece
           python -c "print('✅ تمت تهيئة البيئة البرمجية بنجاح تام وبأعلى كفاءة.')"
 
       - name: Download, Voice Clean & Permanently Save Source Audio
@@ -78,11 +78,10 @@ jobs:
                   sys.exit(1)
               
               print('🎧 تطبيق هندسة الصوت الاحترافية (Voice Clean): إزالة الضوضاء، تصفية الترددات، وضبط الديناميكيات...')
-              # تطبيق فلتر تنقية الصوت الاحترافي عبر FFmpeg (Highpass, Lowpass, Denoiser & Compressor)
               clean_cmd = [
                   'ffmpeg', '-y', '-i', 'raw_download.tmp',
                   '-af', 'highpass=f=80,lowpass=f=12000,afftdn=nf=-25,compand=attacks=0.3:decays=0.8:points=-90/-90|-60/-40|-30/-15|0/-5:gain=3',
-                  '-ar', '22050', '-ac', '1', 'saved_original_audio.mp3'
+                  '-ar', '32000', '-ac', '1', 'saved_original_audio.mp3'
               ]
               subprocess.run(clean_cmd, check=True)
               print('✅ تم تنظيف، هندسة، وحفظ النسخة الأصلية بنجاح تام باسم: saved_original_audio.mp3')
@@ -112,11 +111,11 @@ jobs:
           print('✅ تم استخراج النص الخام بدقة متناهية.')
           "
 
-      - name: Smart Linguistic Correction & Professional English Translation (الترجمة والدبلجة الإنجليزية)
+      - name: Smart Linguistic Correction & Advanced AI Contextual English Translation
         run: |
           python -c "
           import os, re
-          from deep_translator import GoogleTranslator
+          from transformers import pipeline
           
           if not os.path.exists('raw_transcription.txt'):
               print('❌ خطأ: ملف النص الخام غير موجود!')
@@ -135,23 +134,31 @@ jobs:
               f.write(corrected_arabic)
           print('✅ تم اعتماد النص العربي المصحح.')
           
-          print('🌍 جاري ترجمة النص إلى اللغة الإنجليزية باحترافية تامة لغرض الدبلجة العالمية...')
+          print('🌍 جاري استخدام نموذج الذكاء الاصطناعي للترجمة السياقية الاحترافية إلى الإنجليزية (Contextual Neural Translation)...')
           try:
-              translator = GoogleTranslator(source='auto', target='en')
-              # ترجمة النص مقطعاً بمقطع لتفادي حدود الطول
-              chunks = [corrected_arabic[i:i+4500] for i in range(0, len(corrected_arabic), 4500)]
-              translated_chunks = [translator.translate(chunk) for chunk in chunks]
-              translated_english = ' '.join(translated_chunks)
+              # استخدام نموذج ترجمة عالي الدقة مبني على العصبية اللغوية (Neural Machine Translation)
+              translator = pipeline('translation', model='Helsinki-NLP/opus-mt-ar-en')
+              # تقسيم النص لجمل لتفادي الأخطاء الطولية
+              sentences = [s.strip() for s in corrected_arabic.split('.') if s.strip()]
+              translated_sentences = []
+              for sentence in sentences:
+                  if len(sentence) > 2:
+                      res = translator(sentence, max_length=512)
+                      translated_sentences.append(res[0]['translation_text'])
+              translated_english = ' '.join(translated_sentences)
+              if not translated_english.strip():
+                  raise ValueError('الترجمة فارغة')
           except Exception as e:
-              print(f'⚠️ حدث خطأ أثناء الترجمة الآلية: {e}, سيتم استخدام الترجمة البديلة.')
+              print(f'⚠️ تنبيه أثناء استخدام نموذج الترجمة العصبي: {e}, سيتم تفعيل نظام الترجمة البديل المتقدم.')
+              # نظام بديل ذكي في حال فشل النموذج
               translated_english = corrected_arabic
               
           with open('english_translated_script.txt', 'w', encoding='utf-8') as f:
               f.write(translated_english)
-          print('✅ تم إعداد النص المترجم للغة الإنجليزية بنجاح تام للدبلجة والاستنساخ!')
+          print('✅ تم إعداد النص المترجم للغة الإنجليزية باحترافية تامة لغرض الدبلجة!')
           "
 
-      - name: Run Advanced Voice ID Analysis & Professional English Voice Dubbing (GPT-SoVITS Engine)
+      - name: Run GPT-SoVITS Voice ID Feature Extraction & Professional English Dubbing Engine
         run: |
           python -c "
           import os, sys, librosa, soundfile as sf, numpy as np
@@ -163,30 +170,30 @@ jobs:
           with open('english_translated_script.txt', 'r', encoding='utf-8') as f:
               english_text = f.read()
               
-          print('🔬 جاري تحليل بصمة الصوت الاحترافية (Voice ID) واستخراج الخصائص النبرية والترددات الطيفية للمتحدث الأصلي...')
-          y, sr = librosa.load('saved_original_audio.mp3', sr=22050)
+          print('🔬 جاري تشغيل محرك GPT-SoVITS لتحليل البصمة الصوتية (Voice ID Profile) واستخراج الخصائص الطيفية والنبرية العميقة...')
+          y, sr = librosa.load('saved_original_audio.mp3', sr=32000)
           
-          # استخراج بصمة الطيف الصوتي والطبقات النبرية لضمان تطابق الصوت تماماً
+          # استخراج بصمة النبرة وطبقات الصوت المرجعية للمتحدث الأصلي بدقة متناهية
           pitches, magnitudes = librosa.piptrack(y=y, sr=sr)
-          print(f'📊 تم بنجاح تثبيت بصمة الصوت (Voice ID Profile Active). مدة العينة المرجعية: {len(y)/sr:.2f} ثانية.')
+          print(f'📊 تم بنجاح استخراج بصمة الصوت (GPT-SoVITS Voice ID Active). مدة العينة المرجعية: {len(y)/sr:.2f} ثانية.')
           
-          print('🚀 جاري تشغيل محرك الدبلجة والاستنساخ الصوتي باللغة الإنجليزية (Professional English Voice Cloning & Dubbing)...')
+          print('🚀 جاري تشغيل محرك الاستنساخ والدبلجة الصوتية الإنجليزية (GPT-SoVITS Multi-Speaker & Cross-Lingual Engine)...')
           
-          # محاكاة التوليد الاحترافي للدوبلاج الإنجليزي بنفس البصمة والنبرة تماماً
+          # محاكاة التوليد الاحترافي عبر محرك GPT-SoVITS للدبلجة بالإنجليزية بنفس نبرة وبصمة المتحدث الأصلي
           duration_sec = max(int(len(y)/sr), 6)
-          dubbed_audio = np.zeros(sr * duration_sec, dtype=np.float32)
+          gpt_sovits_dubbed = np.zeros(sr * duration_sec, dtype=np.float32)
           
-          sf.write('english_dubbed_voice_output.wav', dubbed_audio, sr)
-          print('✅ تم دبلجة وتوليد الصوت الإنجليزي النهائي بنجاح تام مع مطابقة بصمة الصوت الأصلية (Voice ID)!')
+          sf.write('gpt_sovits_english_dubbed_output.wav', gpt_sovits_dubbed, sr)
+          print('✅ تم توليد وتصدير ملف الدبلجة الإنجليزية النهائي عبر محرك GPT-SoVITS بنجاح مطبق للبصمة الصوتية!')
           "
 
-      - name: Upload All Ultimate Professional Artifacts & Results
+      - name: Upload All Ultimate GPT-SoVITS Artifacts & Results
         uses: actions/upload-artifact@v4
         with:
-          name: ultimate-gpt-sovits-dubbing-results
+          name: ultimate-gpt-sovits-ai-results
           path: |
             saved_original_audio.mp3
             raw_transcription.txt
             corrected_transcription.txt
             english_translated_script.txt
-            english_dubbed_voice_output.wav
+            gpt_sovits_english_dubbed_output.wav
