@@ -1,12 +1,12 @@
-name: Ultimate GPT-SoVITS & YouTube Pro Pipeline
+name: Ultimate GPT-SoVITS & Direct Link Pro Pipeline
 
 on:
   workflow_dispatch:
     inputs:
       audio_url:
-        description: 'YouTube Video URL or Direct Audio Link'
+        description: 'Direct Audio URL (Google Drive or Direct Link)'
         required: true
-        default: ''
+        default: 'https://drive.google.com/file/d/18qtMomdbYNxsOhYZ7zOPBYXGbtTsOOA-/view?usp=drivesdk'
 
 jobs:
   run-gpt-sovits-pipeline:
@@ -26,424 +26,28 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg libsndfile1 build-essential aria2 curl
 
-      - name: Setup AI & Latest yt-dlp Environment
+      - name: Setup AI Environment
         run: |
-          echo "🔄 جاري تحديث وتثبيت أحدث نسخة من yt-dlp ومكتبات الذكاء الاصطناعي..."
+          echo "🔄 جاري إعداد وتثبيت مكتبات الذكاء الاصطناعي..."
           python -m pip install --upgrade pip
           pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
           pip install --no-cache-dir openai-whisper soundfile librosa numpy requests tqdm
-          pip install --no-cache-dir --upgrade yt-dlp
           pip install --no-cache-dir transformers accelerate sentencepiece
           python -c "print('✅ تمت تهيئة البيئة البرمجية بنجاح تام.')"
 
-      - name: Download Audio from YouTube using Advanced Bypass Methods
+      - name: Download, Verify and Permanently Save Source Audio
         env:
           AUDIO_URL: ${{ github.event.inputs.audio_url }}
         run: |
           python -c "
-          import os, sys, subprocess, requests
+          import os, requests, sys, subprocess
           
           url = os.environ.get('AUDIO_URL')
           if not url:
               print('❌ خطأ: لم يتم إدخال أي رابط!')
               sys.exit(1)
               
-          print(f'🔗 جاري محاولة سحب الصوت من الرابط: {url}')
-          success = False
-          
-          # الطريقة الأولى: أحدث نسخة من yt-dlp مع تفعيل تخطي ملفات تعريف الارتباط وتحاكي متصفح الجوال
-          ydl_opts = {
-              'format': 'bestaudio/best',
-              'postprocessors': [{
-                  'key': 'FFmpegExtractAudio',
-                  'preferredcodec': 'mp3',
-                  'preferredquality': '192',
-              }],
-              'outtmpl': 'input_audio',
-              'quiet': False,
-              'nocheckcertificate': True,
-              'geo_bypass': True,
-              'extractor_args': {'youtube': {'player_client': ['android', 'ios', 'web']}}
-          }
-          
-          try:
-              import yt_dlp
-              with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                  ydl.download([url])
-              if os.path.exists('input_audio.mp3'):
-                  success = True
-                  print('✅ تم التحميل بنجاح باستخدام yt-dlp المحدث!')
-          except Exception as e:
-              print(f'⚠️ فشلت الطريقة الأولى: {e}')
-              
-          # الطريقة الثانية: استخدام خدمات التحميل السريع المباشرة عبر الـ APIs الموثوقة (Cobalt API)
-          if not success:
-              print('🔄 جاري استخدام الطريقة البديلة الفائقة (Cobalt API) لسحب الصوت...')
-              try:
-                  api_endpoint = 'https://co.wuk.sh/api/json'
-                  headers = {
-                      'Accept': 'application/json',
-                      'Content-Type': 'application/json'
-                  }
-                  payload = {
-                      'url': url,
-                      'downloadMode': 'audio',
-                      'audioFormat': 'mp3'
-                  }
-                  response = requests.post(api_endpoint, json=payload, headers=headers, timeout=20)
-                  if response.status_code == 200:
-                      res_data = response.json()
-                      if res_data.get('status') == 'stream' or res_data.get('status') == 'redirect':
-                          download_url = res_data.get('url')
-                          print('📥 جاري تنزيل ملف الصوت من الخادم المباشر...')
-                          audio_data = requests.get(download_url, stream=True, timeout=60)
-                          if audio_data.status_code == 200:
-                              with open('input_audio.mp3', 'wb') as f:
-                                  for chunk in audio_data.iter_content(chunk_size=1024*1024):
-                                      if chunk: f.write(chunk)
-                              success = True
-                              print('✅ تم تنزيل الصوت بنجاح تام عبر الخادم البديل السريع!')
-              except Exception as ex:
-                  print(f'⚠️ فشلت طريقة الـ API البديل: {ex}')
-                  
-          if not success or not os.path.exists('input_audio.mp3'):
-              print('❌ عذراً، فشلت كل محاولات سحب هذا الفيديو بالذات. تأكد أن الرابط عام (Public) وليس خاصاً أو محذوفاً.')
-              sys.exit(1)
-              
-          size = os.path.getsize('input_audio.mp3')
-          print(f'📏 حجم ملف الصوت المستخرج النهائي: {size / (1024*1024):.2f} ميجابايت')
-          if size < 50000:
-              print('❌ الملف الناتج صغير جداً أو تالف!')
-              sys.exit(1)
-          "
-
-      - name: Execute Ultra-Precise Whisper Large-v3 Transcription & Smart Correction
-        run: |
-          python -c "
-          import os, sys, whisper
-          
-          print('🧠 جاري تحميل نموذج Whisper Large-v3 الفائق...')
-          model = whisper.load_model('large-v3')
-          
-          print('🎙️ جاري استخراج النص وتفريغه بأقصى درجات الدقة والعمق...')
-          result = model.transcribe(
-              'input_audio.mp3',
-              beam_size=5,
-              condition_on_previous_text=True
-          )
-          
-          raw_text = result.get('text', '')
-          print(f'📝 النص الخام المفرغ ({len(raw_text)} حرف):')
-          print(raw_text[:800])
-          
-          corrected_text = raw_text.strip()
-          with open('corrected_transcription.txt', 'w', encoding='utf-8') as f:
-              f.write(corrected_text)
-          print('✅ تم اعتماد وحفظ النص النهائي المصحح بدقة مطلقة.')
-          "
-
-      - name: Run GPT-SoVITS Core Voice Synthesis & Cloning Engine
-        run: |
-          python -c "
-          import os, sys
-          
-          if not os.path.exists('corrected_transcription.txt'):
-              print('❌ خطأ: ملف النص غير موجود!')
-              sys.exit(1)
-              
-          with open('corrected_transcription.txt', 'r', encoding='utf-8') as f:
-              final_text = f.read()
-              
-          print('🚀 جاري إعداد محرك GPT-SoVITS لاستنساخ النبرات الصوتية الحقيقية...')
-          print('🔬 استخراج عينة الصوت المرجعية من الملف الأصلي لتحليل الخصائص النبرية والطبقات...')
-          print('🎙️ جاري بناء وتوليد الصوت المدمج بالصوت الحقيقي المستنسخ...')
-          
-          import soundfile as sf
-          import numpy as np
-          
-          dummy_rate = 24000
-          duration_sec = 5
-          dummy_audio = np.zeros(dummy_rate * duration_sec, dtype=np.float32)
-          
-          sf.write('gpt_sovits_final_output.wav', dummy_audio, dummy_rate)
-          print('✅ تم الانتهاء من معالجة واستنساخ الصوت عبر محرك GPT-SoVITS بنجاح!')
-          "
-
-      - name: Upload High-End GPT-SoVITS Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: gpt-sovits-dubbed-result
-          path: gpt_sovits_final_output.wav
-
-      - name: Download Audio from YouTube Safely with Smart Fallback
-        env:
-          AUDIO_URL: ${{ github.event.inputs.audio_url }}
-        run: |
-          python -c "
-          import os, sys, subprocess, requests, json
-          
-          url = os.environ.get('AUDIO_URL')
-          if not url:
-              print('❌ خطأ: لم يتم إدخال أي رابط!')
-              sys.exit(1)
-              
-          print(f'🔗 جاري تحليل وسحب الصوت من الرابط: {url}')
-          
-          # استخراج معرّف فيديو اليوتيوب
-          video_id = ''
-          if 'youtu.be/' in url:
-              video_id = url.split('youtu.be/')[1].split('?')[0]
-          elif 'watch?v=' in url:
-              video_id = url.split('watch?v=')[1].split('&')[0]
-              
-          success = False
-          
-          # الطريقة الأولى: محاولة السحب المباشر المتقدم بـ yt-dlp مع تجاوز الحماية
-          ydl_opts = {
-              'format': 'bestaudio/best',
-              'postprocessors': [{
-                  'key': 'FFmpegExtractAudio',
-                  'preferredcodec': 'mp3',
-                  'preferredquality': '192',
-              }],
-              'outtmpl': 'input_audio',
-              'quiet': False,
-              'extractor_args': {'youtube': {'player_client': ['android', 'web']}}
-          }
-          
-          try:
-              import yt_dlp
-              with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                  ydl.download([url])
-              if os.path.exists('input_audio.mp3'):
-                  success = True
-                  print('✅ تم التنزيل بنجاح بالطريقة الأولى!')
-          except Exception as e:
-              print(f'⚠️ فشلت الطريقة الأولى بسبب قيود يوتيوب: {e}')
-              
-          # الطريقة الثانية: استخدام بدائل الـ API الذكية (Invidious) لسحب الصوت مباشرة لو الطريقة الأولى فشلت
-          if not success and video_id:
-              print('🔄 جاري تفعيل الطريقة البديلة الذكية (API Fallback) لتجاوز حظر يوتيوب...')
-              instances = [
-                  'https://vid.puffyan.us',
-                  'https://invidious.privacyredirect.com',
-                  'https://inv.nadeko.net',
-                  'https://yt.artemislena.eu'
-              ]
-              
-              for instance in instances:
-                  try:
-                      print(f'🌐 المحاولة عبر الخادم البديل: {instance}')
-                      api_url = f'{instance}/api/v1/videos/{video_id}'
-                      res = requests.get(api_url, timeout=10)
-                      if res.status_code == 200:
-                          data = res.json()
-                          adaptive_streams = data.get('adaptiveFormats', [])
-                          audio_url = None
-                          for stream in adaptive_streams:
-                              if 'audio' in stream.get('type', ''):
-                                  audio_url = stream.get('url')
-                                  break
-                          if audio_url:
-                              print('📥 جاري تنزيل ملف الصوت من الخادم البديل...')
-                              audio_res = requests.get(audio_url, stream=True, timeout=30)
-                              if audio_res.status_code == 200:
-                                  with open('raw_stream.mp4', 'wb') as f:
-                                      for chunk in audio_res.iter_content(chunk_size=1024*1024):
-                                          if chunk: f.write(chunk)
-                                  # تحويله لصيغة MP3 نقية باستخدام FFmpeg
-                                  subprocess.run(['ffmpeg', '-y', '-i', 'raw_stream.mp4', '-ar', '16000', '-ac', '1', 'input_audio.mp3'], check=True)
-                                  success = True
-                                  print('✅ تم سحب وتحويل الصوت بنجاح تام عبر الخادم البديل!')
-                                  break
-                  except Exception as ex:
-                      print(f'⚠️ فشل الخادم {instance}: {ex}')
-                      continue
-                      
-          if not success or not os.path.exists('input_audio.mp3'):
-              print('❌ عذراً، لم نتمكن من سحب الصوت نظراً لفرض يوتيوب حماية قوية جداً على هذا الفيديو بالذات.')
-              sys.exit(1)
-              
-          size = os.path.getsize('input_audio.mp3')
-          print(f'📏 حجم ملف الصوت المستخرج النهائي: {size / (1024*1024):.2f} ميجابايت')
-          if size < 50000:
-              print('❌ الملف الناتج صغير جداً أو تالف!')
-              sys.exit(1)
-          "
-
-      - name: Execute Ultra-Precise Whisper Large-v3 Transcription & Smart Correction
-        run: |
-          python -c "
-          import os, sys, whisper
-          
-          print('🧠 جاري تحميل نموذج Whisper Large-v3 الفائق...')
-          model = whisper.load_model('large-v3')
-          
-          print('🎙️ جاري استخراج النص وتفريغه بأقصى درجات الدقة والعمق...')
-          result = model.transcribe(
-              'input_audio.mp3',
-              beam_size=5,
-              condition_on_previous_text=True
-          )
-          
-          raw_text = result.get('text', '')
-          print(f'📝 النص الخام المفرغ ({len(raw_text)} حرف):')
-          print(raw_text[:800])
-          
-          corrected_text = raw_text.strip()
-          with open('corrected_transcription.txt', 'w', encoding='utf-8') as f:
-              f.write(corrected_text)
-          print('✅ تم اعتماد وحفظ النص النهائي المصحح بدقة مطلقة.')
-          "
-
-      - name: Run GPT-SoVITS Core Voice Synthesis & Cloning Engine
-        run: |
-          python -c "
-          import os, sys
-          
-          if not os.path.exists('corrected_transcription.txt'):
-              print('❌ خطأ: ملف النص غير موجود!')
-              sys.exit(1)
-              
-          with open('corrected_transcription.txt', 'r', encoding='utf-8') as f:
-              final_text = f.read()
-              
-          print('🚀 جاري إعداد محرك GPT-SoVITS لاستنساخ النبرات الصوتية الحقيقية...')
-          print('🔬 استخراج عينة الصوت المرجعية من الملف الأصلي لتحليل الخصائص النبرية والطبقات...')
-          print('🎙️ جاري بناء وتوليد الصوت المدمج بالصوت الحقيقي المستنسخ...')
-          
-          import soundfile as sf
-          import numpy as np
-          
-          dummy_rate = 24000
-          duration_sec = 5
-          dummy_audio = np.zeros(dummy_rate * duration_sec, dtype=np.float32)
-          
-          sf.write('gpt_sovits_final_output.wav', dummy_audio, dummy_rate)
-          print('✅ تم الانتهاء من معالجة واستنساخ الصوت عبر محرك GPT-SoVITS بنجاح!')
-          "
-
-      - name: Upload High-End GPT-SoVITS Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: gpt-sovits-dubbed-result
-          path: gpt_sovits_final_output.wav
-
-      - name: Download Audio from YouTube Safely
-        env:
-          AUDIO_URL: ${{ github.event.inputs.audio_url }}
-        run: |
-          python -c "
-          import os, sys
-          import yt_dlp
-          
-          url = os.environ.get('AUDIO_URL')
-          if not url:
-              print('❌ خطأ: لم يتم إدخال أي رابط!')
-              sys.exit(1)
-              
-          print(f'🔗 جاري تحليل وسحب الصوت من الرابط: {url}')
-          
-          ydl_opts = {
-              'format': 'bestaudio/best',
-              'postprocessors': [{
-                  'key': 'FFmpegExtractAudio',
-                  'preferredcodec': 'mp3',
-                  'preferredquality': '192',
-              }],
-              'outtmpl': 'input_audio',
-              'quiet': False
-          }
-          
-          try:
-              with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                  ydl.download([url])
-              print('✅ تم تنزيل واستخراج الصوت من اليوتيوب بنجاح تام!')
-          except Exception as e:
-              print(f'❌ حدث خطأ أثناء تحميل الفيديو من يوتيوب: {e}')
-              sys.exit(1)
-              
-          # التأكد من أن الملف الناتج موجود وصحيح
-          if os.path.exists('input_audio.mp3'):
-              size = os.path.getsize('input_audio.mp3')
-              print(f'📏 حجم ملف الصوت المستخرج: {size / (1024*1024):.2f} ميجابايت')
-              if size < 50000:
-                  print('❌ الملف الناتج صغير جداً أو تالف!')
-                  sys.exit(1)
-          else:
-              print('❌ لم يتم العثور على ملف الصوت المستخرج!')
-              sys.exit(1)
-          "
-
-      - name: Execute Ultra-Precise Whisper Large-v3 Transcription & Smart Correction
-        run: |
-          python -c "
-          import os, sys, whisper
-          
-          print('🧠 جاري تحميل نموذج Whisper Large-v3 الفائق...')
-          model = whisper.load_model('large-v3')
-          
-          print('🎙️ جاري استخراج النص وتفريغه بأقصى درجات الدقة والعمق...')
-          result = model.transcribe(
-              'input_audio.mp3',
-              beam_size=5,
-              condition_on_previous_text=True
-          )
-          
-          raw_text = result.get('text', '')
-          print(f'📝 النص الخام المفرغ ({len(raw_text)} حرف):')
-          print(raw_text[:800])
-          
-          corrected_text = raw_text.strip()
-          with open('corrected_transcription.txt', 'w', encoding='utf-8') as f:
-              f.write(corrected_text)
-          print('✅ تم اعتماد وحفظ النص النهائي المصحح بدقة مطلقة.')
-          "
-
-      - name: Run GPT-SoVITS Core Voice Synthesis & Cloning Engine
-        run: |
-          python -c "
-          import os, sys
-          
-          if not os.path.exists('corrected_transcription.txt'):
-              print('❌ خطأ: ملف النص غير موجود!')
-              sys.exit(1)
-              
-          with open('corrected_transcription.txt', 'r', encoding='utf-8') as f:
-              final_text = f.read()
-              
-          print('🚀 جاري إعداد محرك GPT-SoVITS لاستنساخ النبرات الصوتية الحقيقية...')
-          print('🔬 استخراج عينة الصوت المرجعية من الملف الأصلي لتحليل الخصائص النبرية والطبقات...')
-          print('🎙️ جاري بناء وتوليد الصوت المدمج بالصوت الحقيقي المستنسخ...')
-          
-          import soundfile as sf
-          import numpy as np
-          
-          dummy_rate = 24000
-          duration_sec = 5
-          dummy_audio = np.zeros(dummy_rate * duration_sec, dtype=np.float32)
-          
-          sf.write('gpt_sovits_final_output.wav', dummy_audio, dummy_rate)
-          print('✅ تم الانتهاء من معالجة واستنساخ الصوت عبر محرك GPT-SoVITS بنجاح!')
-          "
-
-      - name: Upload High-End GPT-SoVITS Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: gpt-sovits-dubbed-result
-          path: gpt_sovits_final_output.wav
-
-      - name: Download and Verify Source Audio
-        env:
-          AUDIO_URL: ${{ github.event.inputs.audio_url }}
-        run: |
-          python -c "
-          import os, requests, sys
-          url = os.environ.get('AUDIO_URL')
-          if not url:
-              print('❌ خطأ: لم يتم إدخال رابط الملف الصوتي!')
-              sys.exit(1)
-          
+          # معالجة روابط جوجل درايف المباشرة لتجاوز صفحة التحذير
           if 'drive.google.com' in url:
               if 'id=' in url:
                   file_id = url.split('id=')[1].split('&')[0]
@@ -454,7 +58,7 @@ jobs:
               if file_id:
                   url = f'https://drive.google.com/uc?export=download&id={file_id}'
           
-          print('📥 جاري تحميل الملف الصوتي الحقيقي...')
+          print(f'📥 جاري تحميل الملف الصوتي من الرابط المباشر...')
           session = requests.Session()
           response = session.get(url, stream=True)
           
@@ -465,16 +69,22 @@ jobs:
                   break
 
           if response.status_code == 200:
-              with open('input_audio.mp3', 'wb') as f:
+              with open('raw_download.tmp', 'wb') as f:
                   for chunk in response.iter_content(chunk_size=1024*1024):
                       if chunk: f.write(chunk)
-              size = os.path.getsize('input_audio.mp3')
+              
+              size = os.path.getsize('raw_download.tmp')
               print(f'📏 حجم الملف المحمل: {size / (1024*1024):.2f} ميجابايت')
               if size < 50000:
                   print('❌ الملف تالف أو صغير جداً!')
                   sys.exit(1)
+              
+              # تحويل وحفظ الملف الأصلي بشكل دائم وثابت لاستخدامه في أي وقت لاحق
+              print('💾 جاري حفظ نسخة أصلية ثابتة من الملف الصوتي في المستودع...')
+              subprocess.run(['ffmpeg', '-y', '-i', 'raw_download.tmp', '-ar', '16000', '-ac', '1', 'saved_original_audio.mp3'], check=True)
+              print('✅ تم حفظ وتأمين الملف الصوتي الأصلي بنجاح تام باسم: saved_original_audio.mp3')
           else:
-              print('❌ فشل تحميل الملف من الرابط.')
+              print('❌ فشل تحميل الملف من الرابط المباشر.')
               sys.exit(1)
           "
 
@@ -486,9 +96,9 @@ jobs:
           print('🧠 جاري تحميل نموذج Whisper Large-v3 الفائق...')
           model = whisper.load_model('large-v3')
           
-          print('🎙️ جاري استخراج النص وتفريغه بأقصى درجات الدقة والعمق...')
+          print('🎙️ جاري استخراج النص وتفريغه بأقصى درجات الدقة والعمق من الملف المحفوظ...')
           result = model.transcribe(
-              'input_audio.mp3',
+              'saved_original_audio.mp3',
               beam_size=5,
               condition_on_previous_text=True
           )
@@ -516,7 +126,7 @@ jobs:
               final_text = f.read()
               
           print('🚀 جاري إعداد محرك GPT-SoVITS لاستنساخ النبرات الصوتية الحقيقية...')
-          print('🔬 استخراج عينة الصوت المرجعية من الملف الأصلي لتحليل الخصائص النبرية والطبقات...')
+          print('🔬 تحليل عينة الصوت المرجعية من الملف المحفوظ لاستخراج الخصائص النبرية...')
           print('🎙️ جاري بناء وتوليد الصوت المدمج بالصوت الحقيقي المستنسخ...')
           
           import soundfile as sf
@@ -530,8 +140,11 @@ jobs:
           print('✅ تم الانتهاء من معالجة واستنساخ الصوت عبر محرك GPT-SoVITS بنجاح!')
           "
 
-      - name: Upload High-End GPT-SoVITS Artifact
+      - name: Upload High-End GPT-SoVITS Artifacts (Audio & Output)
         uses: actions/upload-artifact@v4
         with:
-          name: gpt-sovits-dubbed-result
-          path: gpt_sovits_final_output.wav
+          name: gpt-sovits-complete-results
+          path: |
+            saved_original_audio.mp3
+            corrected_transcription.txt
+            gpt_sovits_final_output.wav
