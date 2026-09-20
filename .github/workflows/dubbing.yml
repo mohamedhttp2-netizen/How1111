@@ -31,25 +31,57 @@ jobs:
           pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
           pip install openai-whisper soundfile librosa numpy requests gTTS
 
-      - name: Download and Process Audio File
+      - name: Download and Validate Audio File
         env:
           AUDIO_URL: ${{ github.event.inputs.audio_url }}
         run: |
           python -c "
           import os, requests
           url = os.environ.get('AUDIO_URL')
-          if url:
-              if 'drive.google.com' in url and 'id=' in url:
+          if not url:
+              raise Exception('❌ خطأ: لم تقم بإدخال أي رابط للصوت!')
+          
+          print(f'🔗 الرابط المدخل: {url}')
+          if 'drive.google.com' in url:
+              if 'id=' in url:
                   file_id = url.split('id=')[1].split('&')[0]
-                  url = f'https://drive.google.com/uc?export=download&id={file_id}'
-              elif 'drive.google.com/file/d/' in url:
+              elif '/file/d/' in url:
                   file_id = url.split('/file/d/')[1].split('/')[0]
+              else:
+                  file_id = ''
+              
+              if file_id:
+                  # Google Drive direct download with confirm token for large files
                   url = f'https://drive.google.com/uc?export=download&id={file_id}'
-              res = requests.get(url, stream=True)
-              if res.status_code == 200:
-                  with open('input_audio.mp3', 'wb') as f:
-                      for chunk in res.iter_content(8192): f.write(chunk)
-                  print('✅ تم تحميل الملف بنجاح!')
+          
+          print('📥 جاري بدء تحميل الملف...')
+          session = requests.Session()
+          response = session.get(url, stream=True)
+          
+          # Handle Google Drive confirmation page for large files
+          for key, value in response.cookies.items():
+              if key.startswith('download_warning'):
+                  print('⚠️ تم اكتشاف صفحة تحذير جوجل درايف للملفات الكبيرة، جاري تجاوزها...')
+                  params = {'export': 'download', 'confirm': value, 'id': file_id}
+                  response = session.get('https://drive.google.com/uc', params=params, stream=True)
+                  break
+
+          if response.status_code == 200:
+              with open('input_audio.mp3', 'wb') as f:
+                  for chunk in response.iter_content(8192):
+                      f.write(chunk)
+              
+              file_size = os.path.getsize('input_audio.mp3')
+              print(f'📁 حجم الملف المحمل: {file_size} بايت')
+              if file_size < 1000:
+                  print('❌ تحذير: الملف المحمل صغير جداً وقد يكون صفحة خطأ وليس ملف صوت!')
+                  with open('input_audio.mp3', 'r', errors='ignore') as inf:
+                      print(inf.read()[:300])
+                  raise Exception('فشل تحميل الملف الحقيقي من الرابط.')
+              else:
+                  print('✅ تم تحميل الملف الصوتي الحقيقي والتحقق منه بنجاح!')
+          else:
+              raise Exception(f'❌ فشل التحميل، كود الاستجابة: {response.status_code}')
           "
 
       - name: Full Transcription and Dubbing Generation
@@ -58,21 +90,23 @@ jobs:
           import os, whisper
           from gtts import gTTS
           
-          if os.path.exists('input_audio.mp3'):
-              print('🎙️ جاري تفريغ الصوت بالكامل...')
+          if os.path.exists('input_audio.mp3') and os.path.getsize('input_audio.mp3') > 1000:
+              print('🎙️ جاري تفريغ الصوت وتحليله عبر نموذج Whisper...')
               model = whisper.load_model('base')
               result = model.transcribe('input_audio.mp3')
               full_text = result['text']
-              print(f'📝 النص المفرغ الكامل ({len(full_text)} حرف):')
-              print(full_text[:500])
+              print(f'📝 النص المفرغ المستخرج ({len(full_text)} حرف):')
+              print(full_text[:600])
               
               if full_text.strip():
-                  print('🗣️ جاري تحويل النص بالكامل إلى ملف صوتي...')
+                  print('🗣️ جاري تحويل النص المفرغ إلى ملف صوتي مدبلج...')
                   tts = gTTS(text=full_text, lang='en')
                   tts.save('dubbed_output.mp3')
-                  print('✅ تم إنشاء ملف الدبلجة الكامل بنجاح!')
+                  print('✅ تم إنشاء ملف الدبلجة الحقيقي بنجاح!')
               else:
-                  print('⚠️ النص المفرغ فارغ!')
+                  raise Exception('⚠️ النص المفرغ فارغ ولم يتم العثور على كلمات واضحة في الصوت.')
+          else:
+              raise Exception('❌ لا يوجد ملف صوتي صالح للمعالجة.')
           "
 
       - name: Upload Dubbed Audio Artifact
